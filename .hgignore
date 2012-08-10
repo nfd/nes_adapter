@@ -1,0 +1,13 @@
+syntax: glob
+*.lst
+*.o
+nescontrol.eep
+nescontrol.elf
+nescontrol.hex
+nescontrol.lss
+nescontrol.lst
+nescontrol.map
+nescontrol.o
+nescontrol.sym
+.dep/*
+
