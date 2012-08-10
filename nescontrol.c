@@ -63,9 +63,6 @@ static uint16_t IdleMSRemaining = 0;
 #define NES_BUTTON_LEFT 0x02
 #define NES_BUTTON_RIGHT 0x01
 
-// FIXME: Bit crap
-#define NES_POLL_DELAY 20
-static uint16_t NesDelay = NES_POLL_DELAY;
 static uint8_t NesButtons[2];
 static const uint8_t NesKeys[] = {
 	/* PAD 1 */
@@ -90,35 +87,36 @@ static const uint8_t NesKeys[] = {
 void
 PollJoysticks(void)
 {
-	NesDelay --;
-	if(!NesDelay) {
-		int i;
+	int i;
 
-		NesDelay = NES_POLL_DELAY;
+	// Poll controller 1
+	OUTPUT_PORT = NES_LATCH | NES_CLOCK;
+	_delay_us(12);
+	OUTPUT_PORT = NES_CLOCK;
+	NesButtons[0] = 0;
+	NesButtons[1] = 0;
 
-		// Poll controller 1
-		OUTPUT_PORT = NES_LATCH | NES_CLOCK;
-		_delay_us(12);
-		OUTPUT_PORT = NES_CLOCK;
-		NesButtons[0] = 0;
-		NesButtons[1] = 0;
+	for(i = 0; i < 8; i++) {
+		_delay_us(6);
+		OUTPUT_PORT = 0;
 
-		for(i = 0; i < 8; i++) {
-			_delay_us(6);
-			OUTPUT_PORT = 0;
-
-			if((OUTPUT_PIN & NES_DATA1) == 0) {
-				NesButtons[0] |= (1 << i);
-			}
-			if((OUTPUT_PIN & NES_DATA2) == 0) {
-				NesButtons[1] |= (1 << i);
-			}
-
-			_delay_us(6);
-			OUTPUT_PORT = NES_CLOCK;
+		if((OUTPUT_PIN & NES_DATA1) == 0) {
+			NesButtons[0] |= (1 << i);
 		}
+		if((OUTPUT_PIN & NES_DATA2) == 0) {
+			NesButtons[1] |= (1 << i);
+		}
+
+		_delay_us(6);
+		OUTPUT_PORT = NES_CLOCK;
 	}
 
+	/* Were the controllers actually connected? */
+	if(NesButtons[0] == 0xFF)
+		NesButtons[0] = 0;
+
+	if(NesButtons[1] == 0xFF)
+		NesButtons[1] = 0;
 }
 
 /** Main program entry point. This routine configures the hardware required by the application, then
@@ -137,7 +135,6 @@ int main(void)
 
 	for (;;)
 	{
-		PollJoysticks();
 		HID_Task();
 		USB_USBTask();
 	}
@@ -317,6 +314,9 @@ void CreateKeyboardReport(USB_KeyboardReport_Data_t* const ReportData)
 
 	uint8_t i = 0;
 	uint8_t UsedKeyCodes = 0;
+
+	/* Scan the buttons */
+	PollJoysticks();
 
 	/* Clear the report contents */
 	memset(ReportData, 0, sizeof(USB_KeyboardReport_Data_t));
